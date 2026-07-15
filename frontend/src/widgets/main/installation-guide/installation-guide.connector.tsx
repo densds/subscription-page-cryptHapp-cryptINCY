@@ -81,10 +81,22 @@ export const InstallationGuideConnector = (props: IProps) => {
         subscription.user.shortUuid
     )
 
-    const handleButtonClick = (button: TSubscriptionPageButtonConfig) => {
+    const handleButtonClick = async (button: TSubscriptionPageButtonConfig) => {
         let formattedUrl: string | undefined
 
-        if (button.type === 'subscriptionLink' || button.type === 'copyButton') {
+        if (button.link === '{{INCY_CRYPT1_LINK}}') {
+            try {
+                const res = await fetch(
+                    `/api/incy-crypt-link?url=${encodeURIComponent(subscriptionUrl)}&name=${encodeURIComponent(subscription.user.username)}`
+                )
+                if (!res.ok) throw new Error('bad response')
+                const data = await res.json()
+                formattedUrl = data.link
+            } catch (e) {
+                console.error('Failed to get INCY link', e)
+                return
+            }
+        } else if (button.type === 'subscriptionLink' || button.type === 'copyButton') {
             formattedUrl = TemplateEngine.formatWithMetaInfo(button.link, {
                 username: subscription.user.username,
                 subscriptionUrl

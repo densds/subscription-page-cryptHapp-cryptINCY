@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 
-import { Get, Controller, Res, Req, Param, Logger } from '@nestjs/common';
+import { Get, Controller, Res, Req, Param, Query, Logger, BadRequestException } from '@nestjs/common';
+
+import { encryptLink } from '@incy/link-encoder';
 
 import {
     REQUEST_TEMPLATE_TYPE_VALUES,
@@ -27,6 +29,21 @@ export class RootController {
     @Get(APP_CONFIG_ROUTE_WO_LEADING_PATH)
     async getSubscriptionPageConfig(@GetJWTPayload() user: IJwtPayload, @Req() request: Request) {
         return await this.subpageConfigService.getSubscriptionPageConfig(user.su, request);
+    }
+
+    @Get('api/incy-crypt-link')
+    getIncyCryptLink(@Query('url') url: string, @Query('name') name?: string) {
+        if (!url) {
+            throw new BadRequestException('url query param is required');
+        }
+
+        try {
+            const link = encryptLink(url, name ? { name } : undefined);
+            return { link };
+        } catch (error) {
+            this.logger.error('Failed to encrypt INCY link', error as Error);
+            throw new BadRequestException('Failed to encrypt link');
+        }
     }
 
     @Get([':shortUuid', ':shortUuid/:clientType'])
