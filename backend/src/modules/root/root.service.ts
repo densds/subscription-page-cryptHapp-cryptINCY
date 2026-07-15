@@ -2,9 +2,10 @@ import { Request, Response } from 'express';
 import { createHash } from 'node:crypto';
 import { nanoid } from 'nanoid';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Logger } from '@nestjs/common';
+import { encryptLink } from '@incy/link-encoder';
 
 import { TRequestTemplateTypeKeys } from '@remnawave/backend-contract';
 
@@ -126,6 +127,31 @@ export class RootService {
 
             res.socket?.destroy();
             return;
+        }
+    }
+
+    public async createIncyCryptoLink(
+        clientIp: string,
+        req: Request,
+        shortUuid: string,
+        name?: string,
+    ): Promise<string> {
+        const subscriptionDataResponse = await this.axiosService.getSubscriptionInfo(
+            clientIp,
+            shortUuid,
+        );
+
+        if (!subscriptionDataResponse.isOk || !subscriptionDataResponse.response) {
+            throw new BadRequestException('Invalid subscription');
+        }
+
+        const subscriptionUrl = `${req.protocol}://${req.get('host')}/${shortUuid}`;
+
+        try {
+            return encryptLink(subscriptionUrl, name ? { name } : undefined);
+        } catch (error) {
+            this.logger.error(`Failed to encrypt INCY link: ${error}`);
+            throw new BadRequestException('Failed to encrypt link');
         }
     }
 

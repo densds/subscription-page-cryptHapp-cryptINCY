@@ -87,7 +87,7 @@ export const InstallationGuideConnector = (props: IProps) => {
         if (button.link === '{{INCY_CRYPT1_LINK}}') {
             try {
                 const res = await fetch(
-                    `/api/incy-crypt-link?url=${encodeURIComponent(subscriptionUrl)}&name=${encodeURIComponent(subscription.user.username)}`
+                    `/api/incy-crypt-link?shortUuid=${encodeURIComponent(subscription.user.shortUuid)}&name=${encodeURIComponent(subscription.user.username)}`
                 )
                 if (!res.ok) throw new Error('bad response')
                 const data = await res.json()

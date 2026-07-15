@@ -1,8 +1,15 @@
 import { Request, Response } from 'express';
 
-import { Get, Controller, Res, Req, Param, Query, Logger, BadRequestException } from '@nestjs/common';
-
-import { encryptLink } from '@incy/link-encoder';
+import {
+    Get,
+    Controller,
+    Res,
+    Req,
+    Param,
+    Query,
+    Logger,
+    BadRequestException,
+} from '@nestjs/common';
 
 import {
     REQUEST_TEMPLATE_TYPE_VALUES,
@@ -32,18 +39,24 @@ export class RootController {
     }
 
     @Get('api/incy-crypt-link')
-    getIncyCryptLink(@Query('url') url: string, @Query('name') name?: string) {
-        if (!url) {
-            throw new BadRequestException('url query param is required');
+    async getIncyCryptLink(
+        @ClientIp() clientIp: string,
+        @Req() request: Request,
+        @Query('shortUuid') shortUuid: string,
+        @Query('name') name?: string,
+    ) {
+        if (!shortUuid) {
+            throw new BadRequestException('shortUuid query param is required');
         }
 
-        try {
-            const link = encryptLink(url, name ? { name } : undefined);
-            return { link };
-        } catch (error) {
-            this.logger.error('Failed to encrypt INCY link', error as Error);
-            throw new BadRequestException('Failed to encrypt link');
-        }
+        const link = await this.rootService.createIncyCryptoLink(
+            clientIp,
+            request,
+            shortUuid,
+            name,
+        );
+
+        return { link };
     }
 
     @Get([':shortUuid', ':shortUuid/:clientType'])
