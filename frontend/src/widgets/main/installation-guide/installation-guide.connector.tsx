@@ -16,7 +16,7 @@ import {
 } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { useClipboard } from '@mantine/hooks'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import clsx from 'clsx'
 
 import { constructSubscriptionUrl } from '@shared/utils/construct-subscription-url'
@@ -81,21 +81,49 @@ export const InstallationGuideConnector = (props: IProps) => {
         subscription.user.shortUuid
     )
 
-    const handleButtonClick = async (button: TSubscriptionPageButtonConfig) => {
+    const [incyCryptLink, setIncyCryptLink] = useState<string | undefined>(undefined)
+    const [incyCryptLoading, setIncyCryptLoading] = useState(true)
+
+    useEffect(() => {
+        let cancelled = false
+        setIncyCryptLoading(true)
+
+        fetch(
+            `/api/incy-crypt-link?shortUuid=${encodeURIComponent(subscription.user.shortUuid)}&name=${encodeURIComponent(subscription.user.username)}`
+        )
+            .then((res) => {
+                if (!res.ok) throw new Error('bad response')
+                return res.json()
+            })
+            .then((data) => {
+                if (!cancelled) setIncyCryptLink(data.link)
+            })
+            .catch((e) => {
+                console.error('Failed to pre-fetch INCY link', e)
+            })
+            .finally(() => {
+                if (!cancelled) setIncyCryptLoading(false)
+            })
+
+        return () => {
+            cancelled = true
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [subscription.user.shortUuid])
+
+    const handleButtonClick = (button: TSubscriptionPageButtonConfig) => {
         let formattedUrl: string | undefined
 
         if (button.link === '{{INCY_CRYPT1_LINK}}') {
-            try {
-                const res = await fetch(
-                    `/api/incy-crypt-link?shortUuid=${encodeURIComponent(subscription.user.shortUuid)}&name=${encodeURIComponent(subscription.user.username)}`
-                )
-                if (!res.ok) throw new Error('bad response')
-                const data = await res.json()
-                formattedUrl = data.link
-            } catch (e) {
-                console.error('Failed to get INCY link', e)
+            if (!incyCryptLink) {
+                notifications.show({
+                    title: 'Error',
+                    message: 'INCY link is not ready yet, please try again in a moment',
+                    color: 'red'
+                })
                 return
             }
+            formattedUrl = incyCryptLink
         } else if (button.type === 'subscriptionLink' || button.type === 'copyButton') {
             formattedUrl = TemplateEngine.formatWithMetaInfo(button.link, {
                 username: subscription.user.username,
@@ -116,13 +144,17 @@ export const InstallationGuideConnector = (props: IProps) => {
                 break
             }
             case 'external': {
-                window.open(button.link, '_blank')
+                if (formattedUrl) {
+                    window.location.href = formattedUrl
+                } else {
+                    window.open(button.link, '_blank')
+                }
                 break
             }
             case 'subscriptionLink': {
                 if (!formattedUrl) return
 
-                window.open(formattedUrl, '_blank')
+                window.location.href = formattedUrl
                 break
             }
             default:
@@ -141,6 +173,7 @@ export const InstallationGuideConnector = (props: IProps) => {
                 {buttons.map((button, index) => (
                     <Button
                         key={index}
+                        disabled={button.link === '{{INCY_CRYPT1_LINK}}' && incyCryptLoading}
                         leftSection={
                             <span
                                 dangerouslySetInnerHTML={{
@@ -149,6 +182,7 @@ export const InstallationGuideConnector = (props: IProps) => {
                                 style={{ display: 'flex', alignItems: 'center' }}
                             />
                         }
+                        loading={button.link === '{{INCY_CRYPT1_LINK}}' && incyCryptLoading}
                         onClick={() => handleButtonClick(button)}
                         radius="md"
                         variant={variant}
