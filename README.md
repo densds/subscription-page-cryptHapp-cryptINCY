@@ -1,5 +1,9 @@
 ## Remnawave Subscription Page
 
+Add INCY crypt link 
+Install npm in backend
+npm install @incy/link-encoder
+
 Learn more about Remnawave [here](https://remna.st/).
 
 # Contributors
