@@ -1,15 +1,6 @@
 import { Request, Response } from 'express';
 
-import {
-    Get,
-    Controller,
-    Res,
-    Req,
-    Param,
-    Query,
-    Logger,
-    BadRequestException,
-} from '@nestjs/common';
+import { Get, Controller, Res, Req, Param, Logger } from '@nestjs/common';
 
 import {
     REQUEST_TEMPLATE_TYPE_VALUES,
@@ -36,27 +27,6 @@ export class RootController {
     @Get(APP_CONFIG_ROUTE_WO_LEADING_PATH)
     async getSubscriptionPageConfig(@GetJWTPayload() user: IJwtPayload, @Req() request: Request) {
         return await this.subpageConfigService.getSubscriptionPageConfig(user.su, request);
-    }
-
-    @Get('api/incy-crypt-link')
-    async getIncyCryptLink(
-        @ClientIp() clientIp: string,
-        @Req() request: Request,
-        @Query('shortUuid') shortUuid: string,
-        @Query('name') name?: string,
-    ) {
-        if (!shortUuid) {
-            throw new BadRequestException('shortUuid query param is required');
-        }
-
-        const link = await this.rootService.createIncyCryptoLink(
-            clientIp,
-            request,
-            shortUuid,
-            name,
-        );
-
-        return { link };
     }
 
     @Get([':shortUuid', ':shortUuid/:clientType'])

@@ -15,6 +15,7 @@ import {
     UnstyledButton
 } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
+import { encryptLink } from '@densds/link-encoder'
 import { useClipboard } from '@mantine/hooks'
 import { useEffect, useState } from 'react'
 import clsx from 'clsx'
@@ -88,18 +89,15 @@ export const InstallationGuideConnector = (props: IProps) => {
         let cancelled = false
         setIncyCryptLoading(true)
 
-        fetch(
-            `/api/incy-crypt-link?shortUuid=${encodeURIComponent(subscription.user.shortUuid)}&name=${encodeURIComponent(subscription.user.username)}`
-        )
-            .then((res) => {
-                if (!res.ok) throw new Error('bad response')
-                return res.json()
-            })
-            .then((data) => {
-                if (!cancelled) setIncyCryptLink(data.link)
+        // name is capped at 128 chars per @densds/link-encoder's encryptLink contract
+        const name = subscription.user.username.slice(0, 128)
+
+        encryptLink(subscriptionUrl, { name })
+            .then((link) => {
+                if (!cancelled) setIncyCryptLink(link)
             })
             .catch((e) => {
-                console.error('Failed to pre-fetch INCY link', e)
+                console.error('Failed to generate INCY link', e)
             })
             .finally(() => {
                 if (!cancelled) setIncyCryptLoading(false)
@@ -109,7 +107,7 @@ export const InstallationGuideConnector = (props: IProps) => {
             cancelled = true
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [subscription.user.shortUuid])
+    }, [subscriptionUrl, subscription.user.username])
 
     const handleButtonClick = (button: TSubscriptionPageButtonConfig) => {
         let formattedUrl: string | undefined
