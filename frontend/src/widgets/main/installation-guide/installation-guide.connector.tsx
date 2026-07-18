@@ -17,7 +17,7 @@ import {
 import { notifications } from '@mantine/notifications'
 import { encryptLink } from '@densds/link-encoder'
 import { useClipboard } from '@mantine/hooks'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
 
 import { constructSubscriptionUrl } from '@shared/utils/construct-subscription-url'
@@ -32,6 +32,17 @@ import { IBlockRendererProps } from './components/blocks/renderer-block.interfac
 import classes from './installation-guide.module.css'
 
 export type TBlockVariant = 'accordion' | 'cards' | 'minimal' | 'timeline'
+
+// Deep links (incy://, happ://, ...) must hand off via location.href — window.open
+// either blocks them as a popup or leaves a dangling blank tab. Regular http(s)
+// subscription links must stay in a new tab so the page itself isn't navigated away.
+const navigateToUrl = (url: string) => {
+    if (/^https?:\/\//i.test(url)) {
+        window.open(url, '_blank')
+    } else {
+        window.location.href = url
+    }
+}
 
 interface IProps {
     BlockRenderer: React.ComponentType<IBlockRendererProps>
@@ -82,10 +93,24 @@ export const InstallationGuideConnector = (props: IProps) => {
         subscription.user.shortUuid
     )
 
+    const hasIncyButton = useMemo(
+        () =>
+            Object.values(platforms).some((platformConfig) =>
+                platformConfig?.apps.some((app) =>
+                    app.blocks.some((block) =>
+                        block.buttons.some((button) => button.link === '{{INCY_CRYPT1_LINK}}')
+                    )
+                )
+            ),
+        [platforms]
+    )
+
     const [incyCryptLink, setIncyCryptLink] = useState<string | undefined>(undefined)
-    const [incyCryptLoading, setIncyCryptLoading] = useState(true)
+    const [incyCryptLoading, setIncyCryptLoading] = useState(false)
 
     useEffect(() => {
+        if (!hasIncyButton) return
+
         let cancelled = false
         setIncyCryptLoading(true)
 
@@ -107,7 +132,7 @@ export const InstallationGuideConnector = (props: IProps) => {
             cancelled = true
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [subscriptionUrl, subscription.user.username])
+    }, [hasIncyButton, subscriptionUrl, subscription.user.username])
 
     const handleButtonClick = (button: TSubscriptionPageButtonConfig) => {
         let formattedUrl: string | undefined
@@ -143,7 +168,7 @@ export const InstallationGuideConnector = (props: IProps) => {
             }
             case 'external': {
                 if (formattedUrl) {
-                    window.location.href = formattedUrl
+                    navigateToUrl(formattedUrl)
                 } else {
                     window.open(button.link, '_blank')
                 }
@@ -152,7 +177,7 @@ export const InstallationGuideConnector = (props: IProps) => {
             case 'subscriptionLink': {
                 if (!formattedUrl) return
 
-                window.location.href = formattedUrl
+                navigateToUrl(formattedUrl)
                 break
             }
             default:
